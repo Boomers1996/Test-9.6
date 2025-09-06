@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Avatar Emotions</title>
+  <style>
+    html, body, #app { height: 100%; margin: 0; }
+    #ui { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.5); color: #fff; padding: 8px; border-radius: 6px; font-family: system-ui, sans-serif; }
+    #ui select, #ui button { margin: 4px 0; width: 100%; }
+    #log { max-height: 120px; overflow: auto; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="ui">
+    <div>
+      <label>Animation Clip</label>
+      <select id="clipSelect"></select>
+      <button id="playClip">Play Clip</button>
+    </div>
+    <div style="margin-top:8px;">
+      <label>Emotions</label>
+      <div id="emotions"></div>
+    </div>
+    <div style="margin-top:8px;">
+      <label>Fallback Actions</label>
+      <div>
+        <button data-action="spin">Spin</button>
+        <button data-action="nod">Nod</button>
+        <button data-action="shake">Shake</button>
+        <button data-action="lean">Lean</button>
+      </div>
+    </div>
+    <div id="log"></div>
+  </div>
+  <script type="module" src="/main.js"></script>
+</body>
+</html>
+
