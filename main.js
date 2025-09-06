@@ -1,6 +1,12 @@
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
 import { OrbitControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'https://unpkg.com/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
+import { RGBELoader } from 'https://unpkg.com/three@0.160.0/examples/jsm/loaders/RGBELoader.js';
+import { EffectComposer } from 'https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/RenderPass.js';
+import { SAOPass } from 'https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/SAOPass.js';
+import { ShaderPass } from 'https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/ShaderPass.js';
+import { FXAAShader } from 'https://unpkg.com/three@0.160.0/examples/jsm/shaders/FXAAShader.js';
 
 const container = document.getElementById('threeContainer');
 const dropZone = document.getElementById('dropZone');
@@ -22,6 +28,10 @@ let animationActions = [];
 let currentAction = null;
 let clock = new THREE.Clock();
 let activeMorphTweens = [];
+let composer = null;
+let fxaaPass = null;
+let saoPass = null;
+let ground = null;
 
 init();
 animate();
@@ -36,7 +46,9 @@ function init() {
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.0;
+  renderer.toneMappingExposure = 1.2;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(container.clientWidth, container.clientHeight);
   container.appendChild(renderer.domElement);
@@ -44,20 +56,31 @@ function init() {
   controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
 
-  const hemi = new THREE.HemisphereLight(0xffffff, 0x223344, 1.0);
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x223344, 0.6);
   scene.add(hemi);
-  const dir = new THREE.DirectionalLight(0xffffff, 1.2);
-  dir.position.set(3, 5, 2);
+  const dir = new THREE.DirectionalLight(0xffffff, 2.4);
+  dir.position.set(3, 6, 3);
   dir.castShadow = true;
+  dir.shadow.mapSize.set(2048, 2048);
+  dir.shadow.camera.near = 0.1;
+  dir.shadow.camera.far = 20;
+  dir.shadow.camera.left = -5; dir.shadow.camera.right = 5; dir.shadow.camera.top = 5; dir.shadow.camera.bottom = -5;
+  dir.shadow.bias = -0.0002;
   scene.add(dir);
 
-  const grid = new THREE.GridHelper(10, 10, 0x334, 0x223);
-  grid.position.y = 0;
-  scene.add(grid);
+  // Shadow-catching ground
+  const groundMat = new THREE.ShadowMaterial({ opacity: 0.35 });
+  ground = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), groundMat);
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = 0;
+  ground.receiveShadow = true;
+  scene.add(ground);
 
   window.addEventListener('resize', onResize);
   setupDragAndDrop();
   setupUI();
+  loadEnvironment();
+  setupPostprocessing();
 }
 
 function onResize() {
@@ -66,6 +89,10 @@ function onResize() {
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   renderer.setSize(w, h);
+  if (composer) composer.setSize(w, h);
+  if (fxaaPass && fxaaPass.material?.uniforms?.resolution) {
+    fxaaPass.material.uniforms.resolution.value.set(1 / (w * renderer.getPixelRatio()), 1 / (h * renderer.getPixelRatio()));
+  }
 }
 
 function setupDragAndDrop() {
@@ -151,6 +178,37 @@ async function loadGLBUrl(url) {
   model.position.sub(center);
   const scale = 1.4 / Math.max(size.x, size.y, size.z);
   model.scale.setScalar(scale);
+  // After scaling and centering, place on ground (y=0)
+  const box2 = new THREE.Box3().setFromObject(model);
+  if (isFinite(box2.min.y)) {
+    model.position.y -= box2.min.y;
+  }
+
+  // Shadow + material enhancements
+  const maxAniso = renderer.capabilities.getMaxAnisotropy?.() || 8;
+  model.traverse(obj => {
+    if (obj.isMesh) {
+      obj.castShadow = true;
+      obj.receiveShadow = false;
+      const mat = obj.material;
+      const setAniso = m => { if (m && m.anisotropy !== undefined) m.anisotropy = maxAniso; };
+      if (Array.isArray(mat)) {
+        mat.forEach(m => {
+          if (m.isMeshStandardMaterial || m.isMeshPhysicalMaterial) {
+            m.envMapIntensity = 1.1;
+          }
+          setAniso(m.map); setAniso(m.normalMap); setAniso(m.roughnessMap); setAniso(m.metalnessMap);
+          m.needsUpdate = true;
+        });
+      } else if (mat) {
+        if (mat.isMeshStandardMaterial || mat.isMeshPhysicalMaterial) {
+          mat.envMapIntensity = 1.1;
+        }
+        setAniso(mat.map); setAniso(mat.normalMap); setAniso(mat.roughnessMap); setAniso(mat.metalnessMap);
+        mat.needsUpdate = true;
+      }
+    }
+  });
   scene.add(model);
 
   // Animations
@@ -450,6 +508,41 @@ function animate() {
       return now < endTime;
     });
   }
-  renderer.render(scene, camera);
+  if (composer) composer.render(); else renderer.render(scene, camera);
+}
+
+async function loadEnvironment() {
+  try {
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    pmrem.compileEquirectangularShader();
+    const hdrUrl = 'https://threejs.org/examples/textures/equirectangular/royal_esplanade_1k.hdr';
+    const rgbe = new RGBELoader();
+    const tex = await rgbe.loadAsync(hdrUrl);
+    const envMap = pmrem.fromEquirectangular(tex).texture;
+    scene.environment = envMap;
+    tex.dispose();
+    pmrem.dispose();
+  } catch (e) {
+    console.warn('HDR environment failed, continuing without.', e);
+  }
+}
+
+function setupPostprocessing() {
+  const size = new THREE.Vector2();
+  renderer.getSize(size);
+  composer = new EffectComposer(renderer);
+  const renderPass = new RenderPass(scene, camera);
+  composer.addPass(renderPass);
+
+  saoPass = new SAOPass(scene, camera, false, true);
+  saoPass.params.saoIntensity = 0.02;
+  saoPass.params.saoScale = 1;
+  saoPass.params.saoKernelRadius = 16;
+  saoPass.params.saoBias = 0.5;
+  composer.addPass(saoPass);
+
+  fxaaPass = new ShaderPass(FXAAShader);
+  fxaaPass.material.uniforms['resolution'].value.set(1 / (size.x * renderer.getPixelRatio()), 1 / (size.y * renderer.getPixelRatio()));
+  composer.addPass(fxaaPass);
 }
 
