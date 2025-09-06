@@ -1,0 +1,21 @@
+{
+  "visemeToBlendshapes": {
+    "sil": [["MouthClose", 1.0]],
+    "PP": [["MouthClose", 1.0], ["JawOpen", 0.05]],
+    "FF": [["MouthF", 1.0], ["MouthDimpleLeft", 0.2], ["MouthDimpleRight", 0.2]],
+    "TH": [["TongueOut", 0.8], ["JawOpen", 0.25]],
+    "DD": [["JawOpen", 0.25], ["MouthClose", 0.2]],
+    "kk": [["JawOpen", 0.35], ["MouthShrugUpper", 0.2]],
+    "CH": [["MouthFunnel", 0.6], ["MouthPucker", 0.4], ["JawOpen", 0.2]],
+    "SS": [["MouthStretchLeft", 0.4], ["MouthStretchRight", 0.4], ["MouthClose", 0.2]],
+    "nn": [["JawOpen", 0.15], ["MouthClose", 0.2]],
+    "RR": [["MouthDimpleLeft", 0.4], ["MouthDimpleRight", 0.4], ["JawOpen", 0.1]],
+    "aa": [["JawOpen", 0.7]],
+    "E": [["MouthSmileLeft", 0.4], ["MouthSmileRight", 0.4], ["JawOpen", 0.2]],
+    "ih": [["JawOpen", 0.4], ["MouthStretchLeft", 0.2], ["MouthStretchRight", 0.2]],
+    "oh": [["MouthFunnel", 0.7], ["MouthPucker", 0.6], ["JawOpen", 0.25]],
+    "ou": [["MouthPucker", 0.9], ["JawOpen", 0.2]]
+  },
+  "blink": [["EyeBlinkLeft", 1.0], ["EyeBlinkRight", 1.0]]
+}
+
