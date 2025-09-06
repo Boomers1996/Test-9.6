@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GLB Avatar + Emotions</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="app__header">
+        <h1>Avatar Emotion Player</h1>
+        <p>Load your .GLB avatar, control morphs/animations, and drive expressions with text.</p>
+      </header>
+
+      <section class="controls">
+        <div class="controls__group">
+          <label for="fileInput">Load GLB:</label>
+          <input id="fileInput" type="file" accept=".glb,.gltf" />
+          <span class="hint">Tip: Drag & drop a GLB anywhere.</span>
+        </div>
+
+        <div class="controls__group">
+          <label for="animationSelect">Animation:</label>
+          <select id="animationSelect"></select>
+          <button id="playAnimBtn" disabled>Play</button>
+          <button id="stopAnimBtn" disabled>Stop</button>
+        </div>
+
+        <div class="controls__group">
+          <div class="quick-emotions">
+            <button class="emotion-btn" data-emotion="neutral">Neutral</button>
+            <button class="emotion-btn" data-emotion="happy">Happy</button>
+            <button class="emotion-btn" data-emotion="sad">Sad</button>
+            <button class="emotion-btn" data-emotion="angry">Angry</button>
+            <button class="emotion-btn" data-emotion="surprised">Surprised</button>
+          </div>
+          <label for="intensityRange">Intensity</label>
+          <input id="intensityRange" type="range" min="0" max="1" step="0.01" value="0.7" />
+        </div>
+
+        <div class="controls__group">
+          <label for="promptInput">Describe the emotion (LLM optional):</label>
+          <div class="row">
+            <input id="promptInput" type="text" placeholder="e.g., a subtle confident smile with raised eyebrows" />
+            <button id="expressBtn">Express</button>
+          </div>
+          <div class="row small">
+            <label for="apiKeyInput">OpenAI key (optional, server uses env if set):</label>
+            <input id="apiKeyInput" type="password" placeholder="sk-..." />
+          </div>
+          <div id="llmStatus" class="status"></div>
+        </div>
+      </section>
+
+      <section class="viewer">
+        <div id="dropZone" class="dropzone">Drop GLB here</div>
+        <div id="threeContainer" class="viewer__canvas"></div>
+        <div id="guiContainer" class="viewer__gui"></div>
+      </section>
+    </div>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+  </html>
+
